@@ -1,0 +1,2 @@
+# KenyanFoodClassification_Kaggle_CUBoulder
+Computer Vision project
