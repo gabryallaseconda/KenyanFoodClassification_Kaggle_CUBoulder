@@ -175,7 +175,8 @@ def get_data_loaders(data_root,
                      num_workers=2, 
                      seed=10, 
                      data_augmentation=True,
-                     test_size=0.2):
+                     test_size=0.2,
+                     persistent_workers=False):
     """
     Create data loaders for the Kenyan Food 13 dataset.
     """
@@ -221,12 +222,14 @@ def get_data_loaders(data_root,
     train_loader = DataLoader(Subset(train_dataset, train_idx), 
                               batch_size=batch_size, 
                               shuffle=True, 
-                              num_workers=num_workers)
-    
+                              num_workers=num_workers,
+                              persistent_workers=persistent_workers)
+
     val_loader = DataLoader(Subset(val_dataset, val_idx), 
                             batch_size=batch_size, 
                             shuffle=False, 
-                            num_workers=num_workers)
+                            num_workers=num_workers,
+                            persistent_workers=persistent_workers)
     
     
     return train_loader, val_loader, len(classes)

@@ -47,10 +47,11 @@ def patch_configs(epoch_num_to_set=TrainerConfig.epoch_num,
     if torch.cuda.is_available():
         print("Using CUDA backend for PyTorch")
         device = "cuda"
-    if torch.backends.mps.is_available():
-        print("Using MPS backend for PyTorch")
-        device = "mps"
+    #if torch.backends.mps.is_available():
+    #    print("Using MPS backend for PyTorch")
+    #    device = "mps"
     else:
+        raise RuntimeError("No GPU - check your setup.")
         device = "cpu"
         batch_size_to_set = 16
         num_workers_to_set = 2

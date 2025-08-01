@@ -4,6 +4,8 @@ import torchvision.models as models
 import torch.nn as nn
 
 
+import torch
+
 
 
 
@@ -70,6 +72,7 @@ def get_model(
     """
     # 1. Load ResNet-50
     model = models.resnet50(pretrained=pretrained)
+    model = models.resnet101(pretrained=pretrained).to(device="cuda" if torch.cuda.is_available() else "cpu")
 
     # 2. Optionally freeze backbone
     if freeze_backbone:
