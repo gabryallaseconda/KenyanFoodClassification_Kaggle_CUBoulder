@@ -1,0 +1,101 @@
+import os
+from typing import Callable, Iterable
+from dataclasses import dataclass
+
+import torch
+from torchvision.transforms import ToTensor
+
+import random
+import numpy as np
+
+
+
+@dataclass
+class systemConfig:
+    seed: int = 10  
+    device: str = ""
+
+
+
+def system_setup() -> None:
+    torch.set_printoptions(precision=10) # Set precision for tensor printing
+    systemConfig.device = _check_device_availability()
+    _setup_cudnn()
+    _set_seeds()   
+    return
+
+def _check_device_availability():
+    if torch.cuda.is_available():
+        return "cuda"
+    elif torch.backends.mps.is_available():
+        return "mps"
+    else:
+        return "cpu"
+
+def _setup_cudnn():
+    if systemConfig.device == "cuda":
+        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.enabled = True
+
+def _set_seeds():
+    torch.manual_seed(systemConfig.seed)
+    np.random.seed(systemConfig.seed)
+    random.seed(systemConfig.seed)
+    if systemConfig.device == "cuda":
+        torch.cuda.manual_seed_all(systemConfig.seed)
+
+
+
+@dataclass
+class dataConfig:
+    data_root: str = "data"  
+    label_file: str = os.path.join(data_root, "train.csv")  
+    image_directory: str = os.path.join(data_root, 'images/images') 
+
+    seed: int = 10  
+    
+    test_size: float = 0.2 
+    strategy: bool = True  
+
+    batch_size: int = 64
+    
+    data_augmentation: bool = True
+    resized_image_width: int = 320
+    resized_image_height: int = 320
+
+    num_workers: int = 12
+    persistent_workers: bool = False   
+
+
+
+@dataclass
+class modelConfig:
+    model: str = "simple_cnn"
+    set_heads_weights_bias_according_to_class_distribution: bool = True  
+
+
+
+@dataclass
+class trainingConfig:
+    #
+    optimizer: str = "adamw"  
+
+    learning_rate: float = 0.0005  
+    momentum: float = 0.8  
+    weight_decay: float = 4e-3     
+
+    #
+    scheduler: str = "step_lr"  
+    
+    scheduler_step_size: int = 5  
+    scheduler_gamma: float = 0.8  
+
+
+    model_saving_frequency: int = 1  # frequency of model state savings per epochs
+    model_dir: str = "checkpoints"  # directory to save model states
+    model_name_prefix: str = "kenyanfood_model"  # prefix for model state files
+    
+    number_of_epochs: int = 80
+    progress_bar_on_batches_inside_epoch: bool = True
+
