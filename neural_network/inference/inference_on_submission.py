@@ -62,10 +62,15 @@ def _prepare_image_for_inference(img_path):
     return image
 
 def _save_predictions_to_csv(image_ids, predictions):
+    path = inferenceConfig.inference_on_submission_output_path
+    os.makedirs(path, exist_ok=True)
+    file = inferenceConfig.inference_on_submission_output_file
+    filepath = os.path.join(path, file)
+
     submission_df = pd.DataFrame({
         'id': image_ids,
         'label': predictions
     })
 
-    submission_df.to_csv(inferenceConfig.inference_on_submission_output_file, index=False)
-    print(f'Saved predictions on submission to {inferenceConfig.inference_on_submission_output_file}.')
+    submission_df.to_csv(filepath, index=False)
+    print(f'Saved predictions on submission to {filepath}.')

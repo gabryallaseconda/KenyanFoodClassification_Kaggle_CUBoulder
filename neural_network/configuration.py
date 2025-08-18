@@ -109,4 +109,5 @@ class inferenceConfig:
     data_root: str = "data"  
     submission_label_file: str = os.path.join(data_root, "test.csv")
     submission_image_directory: str = os.path.join(data_root, 'images/images')
-    inference_on_submission_output_file: str = "submission/submission.csv"
+    inference_on_submission_output_path: str = "submission"
+    inference_on_submission_output_file: str = "submission.csv"
