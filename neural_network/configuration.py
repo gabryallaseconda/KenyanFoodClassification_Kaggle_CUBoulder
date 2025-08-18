@@ -52,6 +52,8 @@ class dataConfig:
     data_root: str = "data"  
     label_file: str = os.path.join(data_root, "train.csv")  
     image_directory: str = os.path.join(data_root, 'images/images') 
+    submission_label_file: str = os.path.join(data_root, "test.csv")
+    submission_image_directory: str = os.path.join(data_root, 'images/images')
 
     seed: int = 10  
     
@@ -71,19 +73,21 @@ class dataConfig:
 
 @dataclass
 class modelConfig:
-    model: str = "simple_cnn"
+    model: str = "large_cnn"
     set_heads_weights_bias_according_to_class_distribution: bool = True  
 
+    model_saving_path = "models_saved/"
+    model_prefix = "kenyanfood"
 
 
 @dataclass
 class trainingConfig:
     #
-    optimizer: str = "adamw"  
+    optimizer: str = "adamw"        # choose from: "adam", "adamw", "sdg"
 
-    learning_rate: float = 0.0005  
-    momentum: float = 0.8  
-    weight_decay: float = 4e-3     
+    learning_rate: float = 0.0005   # adam, adamw, sdg
+    momentum: float = 0.8           # sdg
+    weight_decay: float = 4e-3      # adam, adamw, sdf
 
     #
     scheduler: str = "step_lr"  
@@ -99,3 +103,10 @@ class trainingConfig:
     number_of_epochs: int = 80
     progress_bar_on_batches_inside_epoch: bool = True
 
+
+@dataclass
+class inferenceConfig:
+    data_root: str = "data"  
+    submission_label_file: str = os.path.join(data_root, "test.csv")
+    submission_image_directory: str = os.path.join(data_root, 'images/images')
+    inference_on_submission_output_file: str = "submission/submission.csv"

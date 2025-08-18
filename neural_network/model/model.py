@@ -88,8 +88,10 @@ class ModestCNNModel(nn.Module):
         self.classifier = nn.Sequential(
             nn.Flatten(),
             nn.Linear(256*10*10, 64*10*10),
+
             nn.ReLU(),
             nn.Linear(64*10*10, 8*10*10),
+
             nn.ReLU(),
             nn.Linear(8*10*10, num_classes)
         )
@@ -100,12 +102,72 @@ class ModestCNNModel(nn.Module):
         return x
     
 
+class LargeCNNModel(nn.Module):
+    
+    def __init__(self, num_classes):
+        super().__init__()
+        
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 64, 3, stride=2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            
+            nn.Conv2d(64, 128, 3, stride=2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            
+            nn.Conv2d(128, 256, 3, stride=2, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
 
+            nn.Conv2d(256, 512, 3, stride=2, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            
+            nn.Conv2d(512, 1024, 3, stride=2, padding=1),
+            nn.BatchNorm2d(1024),
+            nn.ReLU()
+        )
+
+        self.avg_pool = nn.AdaptiveAvgPool2d((5, 5))
+        self.max_pool = nn.AdaptiveMaxPool2d((2, 2))
+        
+        self.classifier = nn.Sequential(
+            #nn.Flatten(),
+            nn.Linear(1024*(5*5 + 2*2), 1024*10),
+            nn.ReLU(),
+
+            nn.Linear(1024*10, 1024),
+            nn.ReLU(),
+
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+
+            nn.Linear(512, 128),
+            nn.ReLU(),
+
+            nn.Linear(128, num_classes)
+        )
+
+    def forward(self, x):
+        features = self.features(x)
+
+        avg_pooled = self.avg_pool(features)
+        avg_pooled = avg_pooled.flatten(1)
+        max_pooled = self.max_pool(features)
+        max_pooled = max_pooled.flatten(1)
+
+        concat = torch.cat((avg_pooled, max_pooled), dim=1)
+
+        y = self.classifier(concat)
+
+        return y
 
 
 model_registry = {
     "simple_cnn": SimpleCNNModel,
     "modest_cnn": ModestCNNModel,
+    "large_cnn": LargeCNNModel,
     "resnet50": lambda num_classes: models.resnet50(pretrained=True, num_classes=num_classes)
     }
 

@@ -1,10 +1,18 @@
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-
 from neural_network.configuration import dataConfig, systemConfig
 
-class TensorBoardVisualizer():
+from abc import ABC, abstractmethod
+
+
+class Visualizer(ABC):
+    @abstractmethod
+    def update_charts(self, train_metric, train_loss, test_metric, test_loss, learning_rate, epoch):
+        pass
+
+
+class TensorBoardVisualizer(Visualizer):
     def __init__(self):
         self._writer = SummaryWriter()
 
