@@ -1,5 +1,9 @@
 
-data/
+/data/
+!neural_network/data/
+
+checkpoints/
+runs/
 
 .DS_Store
 
