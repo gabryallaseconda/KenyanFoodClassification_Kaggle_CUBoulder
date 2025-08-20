@@ -57,7 +57,7 @@ class dataConfig:
 
     seed: int = 10  
     
-    test_size: float = 0.2 
+    test_size: float = 0.2
     strategy: bool = True  
 
     batch_size: int = 64
@@ -82,6 +82,10 @@ class modelConfig:
 
 @dataclass
 class trainingConfig:
+    final_training: bool = False
+
+    number_of_epochs: int = 20
+
     #
     optimizer: str = "adamw"        # choose from: "adam", "adamw", "sdg"
 
@@ -100,7 +104,7 @@ class trainingConfig:
     model_dir: str = "checkpoints"  # directory to save model states
     model_name_prefix: str = "kenyanfood_model"  # prefix for model state files
     
-    number_of_epochs: int = 80
+    
     progress_bar_on_batches_inside_epoch: bool = True
 
 

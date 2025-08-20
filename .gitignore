@@ -4,6 +4,8 @@
 
 checkpoints/
 runs/
+submission/
+models_saved/
 
 .DS_Store
 

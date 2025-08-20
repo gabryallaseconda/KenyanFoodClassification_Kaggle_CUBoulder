@@ -9,7 +9,7 @@ from neural_network.data.dataset import KenyanFood13Dataset
 from neural_network.data.augmentation import get_training_augmentation_pipeline, get_resize_pipeline    
 
 
-def get_data_loaders():
+def get_data_loaders(): # TODO: decide what term to use: test or validation.
         
     labels, class_to_indexes, class_counts = _parse_lables_and_classes()
     train_dataset, validation_dataset = _get_torch_datasets(labels, class_to_indexes)
