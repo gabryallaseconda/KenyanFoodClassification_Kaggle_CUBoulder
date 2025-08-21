@@ -82,8 +82,8 @@ class TensorBoardInterface():
             fw = writer._get_file_writer()
             fw.add_summary(exp)
             fw.add_summary(ssi)
-            for k, v in metric_dict.items():
-                writer.add_scalar(k, v, global_step)
+            #for k, v in metric_dict.items(): # TODO: capire se questo funziona
+            #    writer.add_scalar(k, v, global_step)
             fw.add_summary(sei)
 
         add_hparams_inline(self._writer, hyperparameters, {"_dummy": 0}, global_step=0)

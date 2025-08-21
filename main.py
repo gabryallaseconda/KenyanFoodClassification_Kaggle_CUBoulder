@@ -58,6 +58,8 @@ if __name__ == "__main__":
     metrics = trainer.fit()
 
 
+# TODO: usare augmentation di neural_network dentro l'eda
+# TODO: salvare (solo?) il modello che minimizza la loss del test set!
 
 
 # Close TensorBoard writer

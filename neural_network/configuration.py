@@ -79,6 +79,8 @@ class modelConfig:
     model_saving_path = "models_saved/"
     model_prefix = "kenyanfood"
 
+    # TODO: creare un interfaccia export e usare config per decidere quali tipi esportare!)
+
 
 @dataclass
 class trainingConfig:

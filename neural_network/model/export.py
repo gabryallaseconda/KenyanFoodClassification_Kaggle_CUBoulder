@@ -2,6 +2,7 @@ from neural_network.configuration import modelConfig, dataConfig
 from datetime import datetime
 import torch
 
+# TODO: creare un interfaccia export e usare config per decidere quali tipi esportare!)
 
 def export_to_pth(model):
 
