@@ -86,7 +86,7 @@ class modelConfig:
 class trainingConfig:
     final_training: bool = False
 
-    number_of_epochs: int = 20
+    number_of_epochs: int = 100
 
     #
     optimizer: str = "adamw"        # choose from: "adam", "adamw", "sdg"
@@ -117,3 +117,23 @@ class inferenceConfig:
     submission_image_directory: str = os.path.join(data_root, 'images/images')
     inference_on_submission_output_path: str = "submission"
     inference_on_submission_output_file: str = "submission.csv"
+
+
+@dataclass
+class metricsConfig:
+
+    is_accuracy_enabled: bool = True
+    accuracy_topk: tuple = (1,2,3,5, )
+
+    is_confusion_matrix_enabled: bool = True
+    confusion_matrix_normalize: bool = False
+
+    is_precision_recall_enabled: bool = True
+    precision_recall_aggregation: str = "macro"
+    precision_recall_as_percent: bool = True
+
+    type_scalar: tuple[str, ...] = tuple(
+        [f"accuracy_top{k}" for k in (1, 2, 3, 5)] + ["precision", "recall", "f1"]
+    )
+    type_figure: tuple[str, ...] = ("confusion_matrix_fig",)
+

@@ -1,25 +1,17 @@
-"""
-Trainin pipeline for the model.
-"""
-
 import os
 import datetime
-
 from typing import Union, Callable
 from pathlib import Path
 
+from tqdm.auto import tqdm
+
 import torch
 from torch.utils.data._utils.collate import default_collate #trasform a list of data into a proper batch
-
-
-from tqdm.auto import tqdm
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-
 
 from neural_network.configuration import systemConfig, trainingConfig, dataConfig
 from neural_network.logging.tensorboard_interface import TensorBoardInterface
-from neural_network.training.measures import AverageMeter
-
+from neural_network.training.metrics import AverageMeter, AccuracyEstimator, metric_epoch_orchestrator
 
 
 class Trainer:  
@@ -30,7 +22,6 @@ class Trainer:
                     loader_test: torch.utils.data.DataLoader,
                     
                     loss_function: Callable,
-                    metric_fn: Callable,
                     
                     optimizer: torch.optim.Optimizer,
                     scheduler: Callable,
@@ -43,16 +34,13 @@ class Trainer:
         self.loader_test = loader_test
         
         self.loss_function = loss_function
-        self.metric_fn = metric_fn
         
         self.optimizer = optimizer
         self.scheduler = scheduler
 
         self.tensorboard = tensorboard
-        print(self.tensorboard)
 
         self.epochs = trainingConfig.number_of_epochs
-        
         self.model_saving_frequency = trainingConfig.model_saving_frequency
         self.save_dir = trainingConfig.model_dir
         self.model_name_prefix = trainingConfig.model_name_prefix
@@ -62,7 +50,11 @@ class Trainer:
         self.get_key_metric = lambda metric: metric["top1"]
         
         # Intrnal attributes - tracking of metrics
-        self.metrics = {"epoch": [], "train_loss": [], "test_loss": [], "test_metric": []}
+        self.metrics = {"epoch": [], 
+                        "metrics_train": [], 
+                        "metrics_test": [], 
+                        "train_loss_average": [], 
+                        "test_loss_average": []}
         
 
 
@@ -79,15 +71,12 @@ class Trainer:
             train_loss_average = self._train_hook(epoch)
 
             # TODO: il test hook non lo voglio far partire nel training finale di submission, dove tutti i dati sono usati nel train. Per questo va impostato qualcosa nel config.
-            output_test = self._test_hook(epoch, self.metric_fn)
+            test_loss_average = self._test_hook(epoch)
             
-            self._do_tensorboard_update(train_loss_average, output_test, epoch)
 
-            # Update the metrics
-            self.metrics['epoch'].append(epoch)
-            self.metrics['train_loss'].append(train_loss_average)
-            self.metrics['test_loss'].append(output_test['loss'])
-            self.metrics['test_metric'].append(output_test['metric'])
+            # TODO: remember to save also the learning rate in tensorboard!
+            self._do_metrics_computation(epoch, train_loss_average, test_loss_average)
+            self._do_tensorboard_update(epoch, train_loss_average, test_loss_average)
 
             self._do_scheduler_step(train_loss_average)
 
@@ -99,7 +88,7 @@ class Trainer:
                     os.path.join(self.save_dir, self.model_name_prefix) + str(datetime.datetime.now())
                 )
                 
-            self._do_progress_bar_step(iterator, epoch, output_test, train_loss_average)
+            self._do_progress_bar_step(iterator, epoch, train_loss_average, test_loss_average)
             
         return self.metrics
 
@@ -205,9 +194,9 @@ class Trainer:
             iterator.set_description(status)
             
         return loss_average_tracker.avg
+    
 
-
-    def _test_hook(self, epoch, metric_fn): #TODO: rimuovere metric_fn
+    def _test_hook(self, epoch): 
         
         model = self.model.eval()
         
@@ -215,10 +204,8 @@ class Trainer:
                         disable=not trainingConfig.progress_bar_on_batches_inside_epoch, 
                         dynamic_ncols=True)
         
-        loss_avg = AverageMeter()
+        loss_average_tracker = AverageMeter()
         
-        metric_fn.reset()
-
         offset_saving_result = 0
         
         for i, sample in enumerate(iterator):
@@ -240,41 +227,47 @@ class Trainer:
             offset_saving_result += preds_size
             
             # Update loss average and metric
-            loss_avg.update(loss.item())
+            loss_average_tracker.update(loss.item())
 
             # If the model is classification, apply softmax to the predictions
             predicts = predicts.softmax(dim=1).detach() #TODO: make this softmax a configuration option
+
         
-            # Update metric function with predictions and targets
-            metric_fn.update_value(predicts, targets)
+            # Update progress bar description
             status = "{0}[Test][{1}] Loss_avg: {2:.5}".format(
                 "[{}/{}]".format(epoch, self.epochs), 
                 i, 
-                loss_avg.avg
+                loss_average_tracker.avg
                 )
-            if self.get_key_metric is not None:
-                status = status + ", Metric_avg: {0:.5}".format(
-                    self.get_key_metric(metric_fn.get_metric_value())
-                    )
-        
-            # Update progress bar description
             iterator.set_description(status)
         
-        return {"metric": metric_fn.get_metric_value(), 
-                "loss": loss_avg.avg}
+        return loss_average_tracker.avg
 
 
 
 
-    def _do_tensorboard_update(self, train_loss_average, output_test, epoch):
-        self.tensorboard.update_charts(
-            train_metric = None,
-            train_loss = train_loss_average, 
-            test_metric = output_test['metric'], 
-            test_loss = output_test['loss'],
-            learning_rate = self.optimizer.param_groups[0]['lr'], 
-            epoch = epoch
-        )
+    def _do_metrics_computation(self, epoch, train_loss_average, test_loss_average):
+        self.metrics_train = metric_epoch_orchestrator(predictions=self.train_pred, targets=self.train_target)
+        self.metrics_test = metric_epoch_orchestrator(predictions=self.test_pred, targets=self.test_target)    
+
+        self.metrics['epoch'].append(epoch)
+        self.metrics['metrics_train'].append(self.metrics_train)
+        self.metrics['metrics_test'].append(self.metrics_test)
+        self.metrics['train_loss_average'].append(train_loss_average)
+        self.metrics['test_loss_average'].append(test_loss_average)
+    
+    def _do_tensorboard_update(self, epoch, train_loss_average, test_loss_average):
+        self.tensorboard.add_training_metrics(metrics_train=self.metrics_train,
+                                                metrics_test=self.metrics_test,
+                                                epoch=epoch)
+        
+        self.tensorboard.add_losses(train_loss=train_loss_average, 
+                                    test_loss=test_loss_average, 
+                                    epoch = epoch)
+
+        
+
+
 
     def _do_scheduler_step(self, train_loss_average):
         if self.scheduler is not None:
@@ -283,13 +276,12 @@ class Trainer:
             else:
                 self.scheduler.step()
 
-    def _do_progress_bar_step(self, iterator, epoch, output_test, train_loss_average):
+    def _do_progress_bar_step(self, iterator, epoch, train_loss_average, test_loss_average):
         iterator.set_description(
-            "[{}/{}] Train Loss: {:.5f}, Test Loss: {:.5f}, Test Metric: {}".format(
+            "[{}/{}] Train Loss: {:.5f}, Test Loss: {:.5f}".format(
                 epoch + 1, 
                 self.epochs, 
                 train_loss_average,
-                output_test['loss'], 
-                output_test['metric']
+                test_loss_average
             )
         )

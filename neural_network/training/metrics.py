@@ -3,13 +3,15 @@ import math
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-
+import io
+import torch
+import matplotlib.pyplot as plt
 
 
 def get_loss():
     return torch.nn.CrossEntropyLoss()
 
-
+from neural_network.configuration import metricsConfig
 
 
 class AverageMeter:
@@ -281,3 +283,180 @@ class GPUMemoryMeter:
             return 0.0
         peak = torch.cuda.max_memory_allocated(self.device)  # bytes
         return peak / (1024 ** 3)
+
+
+
+
+########################################################################################3333333
+
+
+import torch
+
+
+def metric_epoch_orchestrator(predictions: torch.Tensor,
+                           targets: torch.Tensor):
+    
+    metrics = {}
+
+    if metricsConfig.is_accuracy_enabled:
+        metrics.update(_metric_epoch_accuracy(predictions=predictions, targets=targets))
+
+    if metricsConfig.is_confusion_matrix_enabled:
+        metrics.update(_metric_epoch_confusion_matrix(predictions=predictions, targets=targets))
+
+    if metricsConfig.is_precision_recall_enabled:
+        metrics.update(_metric_epoch_precision_recall(predictions=predictions, targets=targets))
+
+    return metrics
+
+def _metric_epoch_accuracy(predictions: torch.Tensor,
+                           targets: torch.Tensor):
+
+    topk=metricsConfig.accuracy_topk
+
+    maxk = max(topk)
+    _, pred_topk = predictions.topk(maxk, dim=1, largest=True, sorted=True)  # [N, maxk]
+    target_exp = targets.view(-1, 1).expand_as(pred_topk)
+    correct = pred_topk.eq(target_exp)  # [N, maxk]
+
+    res = {}
+    for k in topk:
+        correct_k = correct[:, :k].any(dim=1).float().sum().item()
+        acc = correct_k / targets.size(0) * 100.0
+        res[f"accuracy_top{k}"] = acc
+    return res
+
+
+def _metric_epoch_confusion_matrix(predictions: torch.Tensor,
+                                   targets: torch.Tensor,
+                                   class_names=None):
+    # predizione di classe
+    y_pred = predictions.argmax(dim=1)
+    num_classes = predictions.size(1)
+
+    if class_names is None:
+        class_names = [str(i) for i in range(num_classes)]
+    else:
+        assert len(class_names) == num_classes, \
+            f"class_names ha len={len(class_names)} ma num_classes={num_classes}"
+
+    # confusion matrix
+    cm = torch.zeros((num_classes, num_classes), dtype=torch.int64)
+    for t, p in zip(targets.view(-1), y_pred.view(-1)):
+        cm[t.long(), p.long()] += 1
+
+    cm_plot = cm.clone().to(dtype=torch.float32)
+    if metricsConfig.confusion_matrix_normalize:
+        row_sums = cm_plot.sum(dim=1, keepdim=True).clamp(min=1)
+        cm_plot = cm_plot / row_sums
+
+    # plot
+    fig, ax = plt.subplots(figsize=(6, 5))
+    im = ax.imshow(
+        cm_plot.numpy(),
+        interpolation="nearest",
+        aspect="equal",
+        vmin=0.0 if metricsConfig.confusion_matrix_normalize else None,
+        vmax=1.0 if metricsConfig.confusion_matrix_normalize else None,
+    )
+    ax.figure.colorbar(im, ax=ax)
+
+    ax.set(
+        xticks=np.arange(num_classes),
+        yticks=np.arange(num_classes),
+        xticklabels=class_names,
+        yticklabels=class_names,
+    )
+    # sposta il labelpad qui:
+    ax.set_xlabel("Predicted label", labelpad=10)
+    ax.set_ylabel("True label", labelpad=10)
+
+    ax.set_title(
+        "Confusion Matrix (normalized)"
+        if metricsConfig.confusion_matrix_normalize else
+        "Confusion Matrix"
+    )
+
+    # migliora leggibilità delle xticks se i nomi sono lunghi
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
+
+    # annotazioni
+    thresh = cm_plot.max().item() / 2.0 if cm_plot.numel() > 0 else 0.5
+    for i in range(num_classes):
+        for j in range(num_classes):
+            val = cm_plot[i, j].item()
+            text = f"{val:.2f}" if metricsConfig.confusion_matrix_normalize else f"{int(val)}"
+            ax.text(j, i, text,
+                    ha="center", va="center",
+                    color="white" if val > thresh else "black")
+
+    fig.tight_layout()
+
+    return {
+        "confusion_matrix_fig": fig,
+        # "confusion_matrix_tensor": cm
+    }
+
+def _metric_epoch_precision_recall(predictions: torch.Tensor,
+                                   targets: torch.Tensor):
+    y_pred = predictions.argmax(dim=1)
+    num_classes = predictions.size(1)
+
+    # confusion matrix
+    cm = torch.zeros((num_classes, num_classes), dtype=torch.int64)
+    for t, p in zip(targets.view(-1), y_pred.view(-1)):
+        cm[t.long(), p.long()] += 1
+
+    eps = 1e-12
+
+    # per-class
+    TP = cm.diag().to(torch.float64)
+    FP = cm.sum(dim=0).to(torch.float64) - TP
+    FN = cm.sum(dim=1).to(torch.float64) - TP
+    support = cm.sum(dim=1).to(torch.float64)  
+
+    prec_per_class = TP / (TP + FP + eps)
+    rec_per_class  = TP / (TP + FN + eps)
+    f1_per_class   = 2 * prec_per_class * rec_per_class / (prec_per_class + rec_per_class + eps)
+
+    # aggregate
+    if metricsConfig.precision_recall_aggregation == "macro":
+        precision = prec_per_class.mean()
+        recall = rec_per_class.mean()
+        f1 = f1_per_class.mean()
+    elif metricsConfig.precision_recall_aggregation == "weighted":
+        weights = support / (support.sum() + eps)
+        precision = (prec_per_class * weights).sum()
+        recall = (rec_per_class * weights).sum()
+        f1 = (f1_per_class * weights).sum()
+    elif metricsConfig.precision_recall_aggregation == "micro":
+        TP_sum = TP.sum()
+        FP_sum = FP.sum()
+        FN_sum = FN.sum()
+        precision = TP_sum / (TP_sum + FP_sum + eps)
+        recall = TP_sum / (TP_sum + FN_sum + eps)
+        f1 = 2 * precision * recall / (precision + recall + eps)
+    else:
+        raise ValueError("average must be one of: 'macro', 'micro', 'weighted'")
+
+    if metricsConfig.precision_recall_as_percent:
+        precision = precision.item() * 100.0
+        recall = recall.item() * 100.0
+        f1 = f1.item() * 100.0
+    else:
+        precision = precision.item()
+        recall = recall.item()
+        f1 = f1.item()
+
+    return {
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        # "per_class": {
+        #     "precision": prec_per_class.tolist(),
+        #     "recall": rec_per_class.tolist(),
+        #     "f1": f1_per_class.tolist(),
+        # }
+    }
+
+

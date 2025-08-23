@@ -1,9 +1,13 @@
+
+# Always remember:
+# tensorboard --logdir runs
+
 import os
 import datetime
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from neural_network.configuration import systemConfig, dataConfig, modelConfig, trainingConfig, inferenceConfig
+from neural_network.configuration import systemConfig, dataConfig, modelConfig, trainingConfig, metricsConfig, inferenceConfig
 
 
 class TensorBoardInterface():
@@ -19,41 +23,32 @@ class TensorBoardInterface():
     # def add_learning_rate(self, learning_rate, epoch):
     #     self._writer.add_scalar("data/learning_rate", learning_rate, epoch)
 
-    # def add_losses(self, train_loss, test_loss, epoch):
-    #     if train_loss is not None:
-    #         self._writer.add_scalar("data/train_loss", train_loss, epoch)
-    #     if test_loss is not None:
-    #         self._writer.add_scalar("data/test_loss", test_loss, epoch)
-
-    # def add_metrics(self, metric_name, train_metric, test_metric, epoch):
-    #     if train_metric is not None:
-    #         self._writer.add_scalar(f"data/train_{metric_name}", train_metric, epoch)
-    #     if test_metric is not None:
-    #         self._writer.add_scalar(f"data/test_{metric_name}:", test_metric, epoch)
-
-
-    def update_charts(self, train_metric, train_loss, test_metric, test_loss, learning_rate, epoch):
-        print(f"Updating TensorBoard with epoch {epoch} metrics...")
-        print(f"Train metric: {train_metric}, Train loss: {train_loss}, "
-              f"Test metric: {test_metric}, Test loss: {test_loss}, "
-              f"Learning rate: {learning_rate}")
-
-        if train_metric is not None:
-            for metric_key, metric_value in train_metric.items():
-                self._writer.add_scalar("train/train_metric:{}".format(metric_key), metric_value, epoch)
-
-        for test_metric_key, test_metric_value in test_metric.items():
-            self._writer.add_scalar("test/test_metric:{}".format(test_metric_key), test_metric_value, epoch)
-
+    def add_losses(self, train_loss, test_loss, epoch):
         if train_loss is not None:
-            self._writer.add_scalar("train/train_loss", train_loss, epoch)
+            self._writer.add_scalar("train/loss", train_loss, epoch)
         if test_loss is not None:
-            self._writer.add_scalar("test/test_loss", test_loss, epoch)
+            self._writer.add_scalar("test/loss", test_loss, epoch)
 
-        self._writer.add_scalar("hyperparameters/learning_rate", learning_rate, epoch)
 
-    def close(self):
-        self._writer.close()
+    def add_training_metrics(self, 
+                            metrics_train, 
+                            metrics_test,
+                            epoch):
+        
+        if metrics_train.keys() != metrics_test.keys():
+            raise KeyError("Keys in metrics dictionary must be the same!")
+
+        metrics_names = metrics_train.keys()
+
+        for metric_name in metrics_names:
+            if metric_name in metricsConfig.type_scalar:
+                self._writer.add_scalar("train/"+metric_name, metrics_train.get(metric_name), epoch)
+                self._writer.add_scalar("test/"+metric_name,  metrics_test.get(metric_name), epoch)
+            elif metric_name in metricsConfig.type_figure:
+                self._writer.add_figure("train/"+metric_name, metrics_train.get(metric_name), epoch)
+                self._writer.add_figure("test/"+metric_name,  metrics_test.get(metric_name), epoch)                
+        
+        self._writer.flush()
 
     
     def add_hyperparameters(self):
@@ -96,11 +91,16 @@ class TensorBoardInterface():
             "data":   self._obj_to_dict(dataConfig),
             "model":  self._obj_to_dict(modelConfig),
             "training": self._obj_to_dict(trainingConfig),
+            "metrics": self._obj_to_dict(metricsConfig),
             "inference":self._obj_to_dict(inferenceConfig),
         }
         
         pretty = json.dumps(configs, indent=2, ensure_ascii=False, default=str)
         self._writer.add_text("hparams/configs", f"```json\n{pretty}\n```", global_step=0)
+
+
+    def close(self):
+        self._writer.close()
 
 
     @staticmethod

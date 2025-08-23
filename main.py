@@ -8,7 +8,7 @@ from neural_network.logging.tensorboard_interface import TensorBoardInterface
 from neural_network.data.data_loader import get_data_loaders
 from neural_network.model.model import get_model
 from neural_network.training.optimizer import get_optimizer, get_scheduler
-from neural_network.training.measures import get_loss, AccuracyEstimator
+from neural_network.training.metrics import get_loss, AccuracyEstimator
 from neural_network.training.trainer import Trainer
 
 #from neural_network.trainer import Trainer
@@ -21,7 +21,8 @@ system_setup()
 print(f"Device: {systemConfig.device}")
 
 tensorboard = TensorBoardInterface()
-
+tensorboard.add_hyperparameters() 
+tensorboard.add_configs()
 
 train_loader, validation_loader, class_counts = get_data_loaders()
 print(f"Distribution in classes: {class_counts}")
@@ -33,7 +34,7 @@ tensorboard.add_model_graph(model)
 optimizer = get_optimizer(parameters = model.parameters())
 scheduler = get_scheduler(optimizer = optimizer)
 loss = get_loss()
-metric = AccuracyEstimator()
+#metric = AccuracyEstimator()
 
 
 
@@ -47,7 +48,7 @@ if __name__ == "__main__":
         loader_test=validation_loader,
 
         loss_function=loss,
-        metric_fn=metric,
+        #metric_fn=metric,
 
         optimizer=optimizer,
         scheduler=scheduler,
@@ -63,8 +64,7 @@ if __name__ == "__main__":
 
 
 # Close TensorBoard writer
-tensorboard.add_hyperparameters() # this must be called after training otherwise it will create a mess.
-tensorboard.add_configs()
+
 tensorboard.close()
 
 
