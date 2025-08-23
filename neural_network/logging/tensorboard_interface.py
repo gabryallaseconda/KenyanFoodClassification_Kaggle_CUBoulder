@@ -20,15 +20,14 @@ class TensorBoardInterface():
         input_tensor = torch.randn(1, 3, dataConfig.resized_image_width, dataConfig.resized_image_height).to(systemConfig.device)
         self._writer.add_graph(model, input_tensor)
 
-    # def add_learning_rate(self, learning_rate, epoch):
-    #     self._writer.add_scalar("data/learning_rate", learning_rate, epoch)
-
     def add_losses(self, train_loss, test_loss, epoch):
         if train_loss is not None:
             self._writer.add_scalar("train/loss", train_loss, epoch)
         if test_loss is not None:
             self._writer.add_scalar("test/loss", test_loss, epoch)
 
+    def add_learning_rate(self, learning_rate, epoch):
+        self._writer.add_scalar("operations/learning_rate", learning_rate, epoch)
 
     def add_training_metrics(self, 
                             metrics_train, 
@@ -77,8 +76,6 @@ class TensorBoardInterface():
             fw = writer._get_file_writer()
             fw.add_summary(exp)
             fw.add_summary(ssi)
-            #for k, v in metric_dict.items(): # TODO: capire se questo funziona
-            #    writer.add_scalar(k, v, global_step)
             fw.add_summary(sei)
 
         add_hparams_inline(self._writer, hyperparameters, {"_dummy": 0}, global_step=0)

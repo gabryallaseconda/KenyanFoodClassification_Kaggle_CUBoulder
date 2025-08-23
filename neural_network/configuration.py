@@ -102,7 +102,7 @@ class trainingConfig:
     scheduler_gamma: float = 0.8  
 
 
-    model_saving_frequency: int = 1  # frequency of model state savings per epochs
+    model_saving_frequency: int = 10  # frequency of model state savings per epochs
     model_dir: str = "checkpoints"  # directory to save model states
     model_name_prefix: str = "kenyanfood_model"  # prefix for model state files
     
