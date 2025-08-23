@@ -53,11 +53,15 @@ class Trainer:
 
         for epoch in iterator:
             train_loss_average = self._train_process(epoch)
-            test_loss_average = self._test_process(epoch) # TODO: il test process non lo voglio far partire nel training finale di submission, dove tutti i dati sono usati nel train. Per questo va impostato qualcosa nel config.
+
+            if trainingConfig.run_test_process:
+                test_loss_average = self._test_process(epoch) # TODO: il test process non lo voglio far partire nel training finale di submission, dove tutti i dati sono usati nel train. Per questo va impostato qualcosa nel config.
+            else:
+                test_loss_average = self._dummy_when_not_run_test_process()
 
             self._do_metrics_computation(epoch, train_loss_average, test_loss_average)
             self._do_tensorboard_update(epoch, train_loss_average, test_loss_average)
-            self._do_scheduler_step()
+            self._do_scheduler_step(train_loss_average)
             self._do_model_saving(epoch)
             self._do_progress_bar_step(iterator, epoch, train_loss_average, test_loss_average)
             
@@ -97,16 +101,20 @@ class Trainer:
 
 
     def _do_results_preallocation(self):
-        dataset_len = len(self.loader_train.dataset)
-
-        pred_shape = (dataset_len, ) + self.warmup_info.get("pred_tail_shape")
-        target_shape = (dataset_len, ) + self.warmup_info.get("target_tail_shape")
-
+        pred_shape, target_shape = self._compute_result_shapes(self.loader_train)
         self.train_pred = torch.empty(pred_shape, dtype=self.warmup_info.get("pred_dtype"))
         self.train_target = torch.empty(target_shape,  dtype=self.warmup_info.get("target_dtype"))
 
-        self.test_pred = torch.empty(pred_shape, dtype=self.warmup_info.get("pred_dtype"))
-        self.test_target = torch.empty(target_shape,  dtype=self.warmup_info.get("target_dtype"))
+        if trainingConfig.run_test_process:
+            pred_shape, target_shape = self._compute_result_shapes(self.loader_test)
+            self.test_pred = torch.empty(pred_shape, dtype=self.warmup_info.get("pred_dtype"))
+            self.test_target = torch.empty(target_shape,  dtype=self.warmup_info.get("target_dtype"))
+
+    def _compute_result_shapes(self, data_loader):
+        dataset_len = len(data_loader.dataset)
+        pred_shape = (dataset_len, ) + self.warmup_info.get("pred_tail_shape")
+        target_shape = (dataset_len, ) + self.warmup_info.get("target_tail_shape")
+        return pred_shape, target_shape
 
 
     def _train_process(self, epoch):
@@ -138,7 +146,7 @@ class Trainer:
                 self.train_target[offset_saving_result : offset_saving_result + preds_size] = targets.detach().cpu()
             offset_saving_result += preds_size
                         
-            status = "[{0}/{1}][Train][{2}] loss: {3:.5}, lr: {5:.5}".format(               # Update progress bar description
+            status = "[{0}/{1}][Train][{2}] loss: {3:.5}, lr: {4:.5}".format(               # Update progress bar description
                 epoch, self.epochs, i, 
                 loss_average_tracker.avg, 
                 self.optimizer.param_groups[0]["lr"])
@@ -148,7 +156,6 @@ class Trainer:
     
 
     def _test_process(self, epoch): 
-        
         model = self.model.eval()
         
         iterator = tqdm(self.loader_test,
@@ -182,10 +189,18 @@ class Trainer:
         return loss_average_tracker.avg
 
 
+    def _dummy_when_not_run_test_process(self):
+        self.test_pred = None
+        self.test_target = None
+        return 0.0
+    
+
     def _do_metrics_computation(self, epoch, train_loss_average, test_loss_average):
         self.metrics_train = metric_epoch_orchestrator(predictions=self.train_pred, targets=self.train_target)
-        self.metrics_test = metric_epoch_orchestrator(predictions=self.test_pred, targets=self.test_target)    
-
+        if trainingConfig.run_test_process:
+            self.metrics_test = metric_epoch_orchestrator(predictions=self.test_pred, targets=self.test_target)    
+        else:
+            self.metrics_test = None
 
     def _do_tensorboard_update(self, epoch, train_loss_average, test_loss_average):
         self.tensorboard.add_training_metrics(metrics_train=self.metrics_train,
@@ -223,10 +238,9 @@ class Trainer:
 
     def _do_progress_bar_step(self, iterator, epoch, train_loss_average, test_loss_average):
         iterator.set_description(
-            "[{}/{}] Train Loss: {:.5f}, Test Loss: {:.5f}".format(
+            "[{0}/{1}][End of epoch] train loss: {2:.5f}, test loss: {3:.5f}".format(
                 epoch + 1, 
                 self.epochs, 
                 train_loss_average,
-                test_loss_average
-            )
+                test_loss_average)
         )

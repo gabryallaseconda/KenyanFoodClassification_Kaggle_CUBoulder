@@ -29,26 +29,36 @@ class TensorBoardInterface():
     def add_learning_rate(self, learning_rate, epoch):
         self._writer.add_scalar("operations/learning_rate", learning_rate, epoch)
 
-    def add_training_metrics(self, 
-                            metrics_train, 
-                            metrics_test,
-                            epoch):
-        
-        if metrics_train.keys() != metrics_test.keys():
-            raise KeyError("Keys in metrics dictionary must be the same!")
-
+    def add_training_metrics(self, metrics_train, metrics_test, epoch):
         metrics_names = metrics_train.keys()
 
-        for metric_name in metrics_names:
-            if metric_name in metricsConfig.type_scalar:
-                self._writer.add_scalar("train/"+metric_name, metrics_train.get(metric_name), epoch)
-                self._writer.add_scalar("test/"+metric_name,  metrics_test.get(metric_name), epoch)
-            elif metric_name in metricsConfig.type_figure:
-                self._writer.add_figure("train/"+metric_name, metrics_train.get(metric_name), epoch)
-                self._writer.add_figure("test/"+metric_name,  metrics_test.get(metric_name), epoch)                
+        self._add_training_metrics_for_process(prefix="train/",
+                                               metrics_names=metrics_names,
+                                               metrics=metrics_train,
+                                               epoch=epoch)
+
+        if trainingConfig.run_test_process:
+            if metrics_train.keys() != metrics_test.keys():
+                raise KeyError("Keys in metrics dictionary must be the same for train and test!")
+            
+            self._add_training_metrics_for_process(prefix="test/",
+                                                metrics_names=metrics_names,
+                                                metrics=metrics_test,
+                                                epoch=epoch)                   
         
         self._writer.flush()
 
+
+    def _add_training_metrics_for_process(self, prefix, metrics_names, metrics, epoch):
+        for metric_name in metrics_names:
+            if metric_name in metricsConfig.type_scalar:
+                self._writer.add_scalar(prefix+metric_name, 
+                                        metrics.get(metric_name), 
+                                        epoch)
+            elif metric_name in metricsConfig.type_figure:
+                self._writer.add_figure(prefix+metric_name, 
+                                        metrics.get(metric_name), 
+                                        epoch)
     
     def add_hyperparameters(self):
         hyperparameters = {

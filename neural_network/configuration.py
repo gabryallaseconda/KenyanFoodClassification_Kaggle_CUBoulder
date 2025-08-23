@@ -22,6 +22,10 @@ def system_setup() -> None:
     systemConfig.device = _check_device_availability()
     _setup_cudnn()
     _set_seeds()   
+
+    if trainingConfig.single_batch_overfitting:
+        trainingConfig.run_test_process = False
+
     return
 
 def _check_device_availability():
@@ -84,14 +88,15 @@ class modelConfig:
 
 @dataclass
 class trainingConfig:
-    final_training: bool = False
+    run_test_process: bool = True   # TODO: implement this
+    single_batch_overfitting: bool = True
 
-    number_of_epochs: int = 100
+    number_of_epochs: int = 10
 
     #
     optimizer: str = "adamw"        # choose from: "adam", "adamw", "sdg"
 
-    learning_rate: float = 0.0005   # adam, adamw, sdg
+    learning_rate: float = 3e-4     # adam, adamw, sdg
     momentum: float = 0.8           # sdg
     weight_decay: float = 4e-3      # adam, adamw, sdf
 
@@ -112,6 +117,8 @@ class trainingConfig:
 
 @dataclass
 class inferenceConfig:
+    score_submission: bool = False  #TODO: qui dovrebbe essere linkato a test/validation nomenclature
+
     data_root: str = "data"  
     submission_label_file: str = os.path.join(data_root, "test.csv")
     submission_image_directory: str = os.path.join(data_root, 'images/images')

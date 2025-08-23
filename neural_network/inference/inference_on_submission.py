@@ -13,6 +13,9 @@ import os
 
 
 def score_submission(model):
+    if not inferenceConfig.run_inference:
+        return
+
     image_ids = _get_image_indexes()
 
     predictions = []

@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader, Subset
 
 from sklearn.model_selection import train_test_split
 
-from neural_network.configuration import dataConfig
+from neural_network.configuration import dataConfig, trainingConfig
 from neural_network.data.dataset import KenyanFood13Dataset
 from neural_network.data.augmentation import get_training_augmentation_pipeline, get_resize_pipeline    
 
@@ -15,20 +15,30 @@ def get_data_loaders(): # TODO: decide what term to use: test or validation.
     train_dataset, validation_dataset = _get_torch_datasets(labels, class_to_indexes)
     train_indexes, validaiton_indexes = _get_splitted_indices(labels)
 
-    train_loader = DataLoader(Subset(train_dataset, train_indexes), 
-                              batch_size=dataConfig.batch_size, 
-                              num_workers=dataConfig.num_workers,
-                              persistent_workers=dataConfig.persistent_workers,
-                              shuffle = True)
+    if trainingConfig.single_batch_overfitting:
+        single_batch = Subset(train_dataset, train_indexes[:dataConfig.batch_size])
+        train_loader = DataLoader(single_batch,
+                                  batch_size=dataConfig.batch_size,
+                                  num_workers=0,
+                                  persistent_workers=False,
+                                  shuffle=True)
+    else:
+        train_loader = DataLoader(Subset(train_dataset, train_indexes),                     # Production train loader
+                                  batch_size=dataConfig.batch_size, 
+                                  num_workers=dataConfig.num_workers,
+                                  persistent_workers=dataConfig.persistent_workers,
+                                  shuffle = True)
 
-    validation_loader = DataLoader(Subset(validation_dataset, validaiton_indexes), 
-                            batch_size=dataConfig.batch_size,
-                            num_workers=dataConfig.num_workers,
-                            persistent_workers=dataConfig.persistent_workers,
-                            shuffle=False)  
+    if trainingConfig.run_test_process:
+        validation_loader = DataLoader(Subset(validation_dataset, validaiton_indexes),      # Production test loader
+                                    batch_size=dataConfig.batch_size,
+                                    num_workers=dataConfig.num_workers,
+                                    persistent_workers=dataConfig.persistent_workers,
+                                    shuffle=False)  
+    else:
+        validation_loader = None
 
     return train_loader, validation_loader, class_counts
-
 
 
 def _parse_lables_and_classes():
