@@ -39,7 +39,8 @@ class Trainer:
         self.epochs = trainingConfig.number_of_epochs
         
         self.data_getter = lambda sample: sample["image"]
-        self.target_getter = lambda sample: torch.tensor(sample["target"]) #TODO check this as it rise a UserWarning, recommendig to use .clone() for copy construct a tensor
+        #self.target_getter = lambda sample: torch.tensor(sample["target"]) #TODO check this as it rise a UserWarning, recommendig to use .clone() for copy construct a tensor
+        self.target_getter = lambda sample: sample["target"]
         self.get_key_metric = lambda metric: metric["top1"]
         
 
@@ -146,7 +147,7 @@ class Trainer:
                 self.train_target[offset_saving_result : offset_saving_result + preds_size] = targets.detach().cpu()
             offset_saving_result += preds_size
                         
-            status = "[{0}/{1}][Train][{2}] loss: {3:.5}, lr: {4:.5}".format(               # Update progress bar description
+            status = "[{0}/{1}][Train][{2}] loss: {3:.5}, lr: {4:.5}".format(       # Update progress bar description
                 epoch, self.epochs, i, 
                 loss_average_tracker.avg, 
                 self.optimizer.param_groups[0]["lr"])

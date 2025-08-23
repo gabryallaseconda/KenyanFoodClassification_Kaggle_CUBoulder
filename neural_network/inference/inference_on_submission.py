@@ -13,7 +13,7 @@ import os
 
 
 def score_submission(model):
-    if not inferenceConfig.run_inference:
+    if not inferenceConfig.score_submission:
         return
 
     image_ids = _get_image_indexes()

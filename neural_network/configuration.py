@@ -23,8 +23,12 @@ def system_setup() -> None:
     _setup_cudnn()
     _set_seeds()   
 
+    if not trainingConfig.run_test_process:
+        modelConfig.run_name = "no_test"
+
     if trainingConfig.single_batch_overfitting:
         trainingConfig.run_test_process = False
+        modelConfig.run_name = "single_batch_overfitting"
 
     return
 
@@ -77,7 +81,10 @@ class dataConfig:
 
 @dataclass
 class modelConfig:
-    model: str = "large_cnn"
+    
+    model: str = "modest_cnn" #"large_cnn"
+    run_name: str = "training_run"
+    
     set_heads_weights_bias_according_to_class_distribution: bool = True  
 
     model_saving_path = "models_saved/"
@@ -91,23 +98,23 @@ class trainingConfig:
     run_test_process: bool = True   # TODO: implement this
     single_batch_overfitting: bool = True
 
-    number_of_epochs: int = 10
+    number_of_epochs: int = 300
 
     #
-    optimizer: str = "adamw"        # choose from: "adam", "adamw", "sdg"
+    optimizer: str = "adam"        # choose from: "adam", "adamw", "sdg"
 
     learning_rate: float = 3e-4     # adam, adamw, sdg
     momentum: float = 0.8           # sdg
-    weight_decay: float = 4e-3      # adam, adamw, sdf
+    weight_decay: float = 0 #4e-3      # adam, adamw, sdf
 
     #
     scheduler: str = "step_lr"  
     
     scheduler_step_size: int = 5  
-    scheduler_gamma: float = 0.8  
+    scheduler_gamma: float = 0.95  # the higher, the more gentle is the reduction
 
 
-    model_saving_frequency: int = 10  # frequency of model state savings per epochs
+    model_saving_frequency: int = 4000  # frequency of model state savings per epochs
     model_dir: str = "checkpoints"  # directory to save model states
     model_name_prefix: str = "kenyanfood_model"  # prefix for model state files
     

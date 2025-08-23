@@ -96,8 +96,8 @@ class ConfusionMatrixMeter:
     @torch.no_grad()
     def update(self, preds: torch.Tensor, targets: torch.Tensor, from_logits: bool = True):
         """
-        preds: [B, C] logits (from_logits=True) oppure [B] class indices (from_logits=False)
-        targets: [B] class indices
+        preds: [B, C] logits (from_logits=True) oppure [B] class indexes (from_logits=False)
+        targets: [B] class indexes
         """
         if from_logits:
             preds = preds.argmax(dim=1)

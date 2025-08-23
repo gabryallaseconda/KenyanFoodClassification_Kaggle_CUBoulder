@@ -13,7 +13,7 @@ def get_data_loaders(): # TODO: decide what term to use: test or validation.
         
     labels, class_to_indexes, class_counts = _parse_lables_and_classes()
     train_dataset, validation_dataset = _get_torch_datasets(labels, class_to_indexes)
-    train_indexes, validaiton_indexes = _get_splitted_indices(labels)
+    train_indexes, validaiton_indexes = _get_splitted_indexes(labels)
 
     if trainingConfig.single_batch_overfitting:
         single_batch = Subset(train_dataset, train_indexes[:dataConfig.batch_size])
@@ -72,12 +72,16 @@ def _choose_augmentation_pipeline_for_training():
         return get_resize_pipeline()
 
 
-def _get_splitted_indices(labels):
-    indices = list(range(len(labels)))
-    train_indexes, validaiton_indexes = train_test_split(indices, 
-                                          test_size=dataConfig.test_size,        
-                                          random_state=dataConfig.seed, 
-                                          stratify=labels.iloc[:, 1] if dataConfig.strategy else None)
+def _get_splitted_indexes(labels):
+    indexes = list(range(len(labels)))
+    if trainingConfig.run_test_process:
+        train_indexes, validaiton_indexes = train_test_split(indexes, 
+                                            test_size=dataConfig.test_size,        
+                                            random_state=dataConfig.seed, 
+                                            stratify=labels.iloc[:, 1] if dataConfig.strategy else None)
+    else:
+        train_indexes, validaiton_indexes = indexes, []
+    
     return train_indexes, validaiton_indexes
 
 def get_indexes_to_class_mapping():

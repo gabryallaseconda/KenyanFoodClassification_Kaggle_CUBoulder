@@ -1,4 +1,4 @@
-
+# https://madebyollin.github.io/convnet-calculator/
 
 import torchvision.models as models
 import torch.nn as nn
@@ -108,42 +108,46 @@ class LargeCNNModel(nn.Module):
         super().__init__()
         
         self.features = nn.Sequential(
-            nn.Conv2d(3, 64, 3, stride=2, padding=1),
+            nn.Conv2d(3, 64, 3, stride=2, padding=1), # in: 320, 320, 3
             nn.BatchNorm2d(64),
             nn.ReLU(),
             
-            nn.Conv2d(64, 128, 3, stride=2, padding=1),
+            nn.Conv2d(64, 128, 3, stride=2, padding=1), # in:  159, 159, 64
             nn.BatchNorm2d(128),
             nn.ReLU(),
             
-            nn.Conv2d(128, 256, 3, stride=2, padding=1),
+            nn.Conv2d(128, 256, 3, stride=2, padding=1), # in: 79, 79, 128
             nn.BatchNorm2d(256),
             nn.ReLU(),
 
-            nn.Conv2d(256, 512, 3, stride=2, padding=1),
+            nn.Conv2d(256, 512, 3, stride=2, padding=1), # in: 39, 39, 256
             nn.BatchNorm2d(512),
             nn.ReLU(),
             
-            nn.Conv2d(512, 1024, 3, stride=2, padding=1),
+            nn.Conv2d(512, 1024, 3, stride=2, padding=1), # in: 19, 19, 512
             nn.BatchNorm2d(1024),
             nn.ReLU()
         )
 
+        # out: 9, 9, 1024
         self.avg_pool = nn.AdaptiveAvgPool2d((5, 5))
-        self.max_pool = nn.AdaptiveMaxPool2d((2, 2))
+        self.max_pool = nn.AdaptiveMaxPool2d((3, 3))
         
         self.classifier = nn.Sequential(
             #nn.Flatten(),
-            nn.Linear(1024*(5*5 + 2*2), 1024*10),
+            nn.Linear(1024*(5*5 + 3*3), 1024*20),
             nn.ReLU(),
 
-            nn.Linear(1024*10, 1024),
+            nn.Linear(1024*20, 1024*5),
             nn.ReLU(),
 
-            nn.Linear(1024, 512),
+            nn.Linear(1024*5, 512*2),
             nn.ReLU(),
 
-            nn.Linear(512, 128),
+            nn.Linear(512*2, 128*2),
+            nn.ReLU(),
+
+            nn.Linear(128*2, 128),
             nn.ReLU(),
 
             nn.Linear(128, num_classes)

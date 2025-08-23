@@ -13,7 +13,7 @@ from neural_network.configuration import systemConfig, dataConfig, modelConfig, 
 class TensorBoardInterface():
     def __init__(self):
         run_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        log_dir = os.path.join("runs", modelConfig.model, run_id)
+        log_dir = os.path.join("runs", modelConfig.model+"-"+modelConfig.run_name, run_id)
         self._writer = SummaryWriter(log_dir=log_dir)
 
     def add_model_graph(self, model):

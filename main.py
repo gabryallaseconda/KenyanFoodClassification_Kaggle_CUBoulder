@@ -61,5 +61,5 @@ if __name__ == "__main__":
 # Close TensorBoard writer
 
 tensorboard.close()
-export_to_pth(model)
+#export_to_pth(model) # TODO: handle the case of non exporting the model lol
 score_submission(model)
